@@ -1,39 +1,68 @@
-// ❗ You don't need to add extra action creators to achieve MVP
-export function moveClockwise() { }
+import axios from 'axios';
+import * as types from './action-types';
 
-export function moveCounterClockwise() { }
+export function moveClockwise() {
+  return {type: types.MOVE_CLOCKWISE}
+}
 
-export function selectAnswer() { }
+export function moveCounterClockwise() {
+  return {type: types.MOVE_COUNTERCLOCKWISE}
+}
 
-export function setMessage() { }
+export function selectAnswer(answer_id) {
+  return {type: types.SET_SELECTED_ANSWER, payload: answer_id}
+}
 
-export function setQuiz() { }
+export function setMessage() {
+  return {type: types.SET_INFO_MESSAGE}
+}
 
-export function inputChange() { }
+export function setQuiz() {
+  return {type: types.SET_QUIZ_INTO_STATE} 
+}
 
-export function resetForm() { }
+export function inputChange({id, value}) {
+  return {
+    type: types.INPUT_CHANGE, payload: {id, value}}
+}
 
-// ❗ Async action creators
+export function resetForm() {
+  return {type: types.RESET_FORM}
+}
+
 export function fetchQuiz() {
   return function (dispatch) {
-    // First, dispatch an action to reset the quiz state (so the "Loading next quiz..." message can display)
-    // On successful GET:
-    // - Dispatch an action to send the obtained quiz to its state
+    dispatch({type: types.SET_QUIZ_INTO_STATE, payload: null})
+    axios.get('http://localhost:9000/api/quiz/next')
+      .then(res => {
+        dispatch({type: types.SET_QUIZ_INTO_STATE, payload: res.data})
+      })
+      .catch(err => console.error({err}))
   }
 }
-export function postAnswer() {
+export function postAnswer(questionId, answerId) {
   return function (dispatch) {
-    // On successful POST:
-    // - Dispatch an action to reset the selected answer state
-    // - Dispatch an action to set the server message to state
-    // - Dispatch the fetching of the next quiz
+    console.log('postAnswer action dispatch', {'quiz_id': questionId, 'answer_id': answerId})
+    axios.post('http://localhost:9000/api/quiz/answer', {'quiz_id': questionId, 'answer_id': answerId})
+      .then(res => {
+        console.log('Response from successful answer post: ', res)
+        dispatch({type: types.SET_SELECTED_ANSWER, payload:null})
+        dispatch({type: types.SET_INFO_MESSAGE, payload:res.data.message})
+        dispatch(fetchQuiz())
+      })
+      .catch(err => console.error(err))
   }
 }
-export function postQuiz() {
+
+export function postQuiz(form) {
   return function (dispatch) {
-    // On successful POST:
-    // - Dispatch the correct message to the the appropriate state
-    // - Dispatch the resetting of the form
+    axios.post('http://localhost:9000/api/quiz/new', {"question_text": form.newQuestion, "true_answer_text": form.newTrueAnswer, "false_answer_text": form.newFalseAnswer})
+      .then(res => {
+        console.log('postQuiz success: ', res)
+        const newQuestion = res.data
+        dispatch({type: types.SET_INFO_MESSAGE, payload: `Congrats: "${newQuestion.question}" is a great question!`})
+        dispatch({type: types.RESET_FORM})
+      })
+      .catch(err => console.error(err))
   }
 }
-// ❗ On promise rejections, use log statements or breakpoints, and put an appropriate error message in state
